@@ -699,7 +699,7 @@ if __name__ == "__main__":
     
     Lite(
         strategy=DDPStrategy(find_unused_parameters=True),
-        devices=map(int, args.gpus), # "auto",
+        devices=list(map(int, args.gpus)), # "auto",
         accelerator="gpu",
         precision=32,
         # num_nodes=4,
