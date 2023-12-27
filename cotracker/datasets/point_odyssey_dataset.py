@@ -70,7 +70,7 @@ class PointOdysseyDataset(CoTrackerDataset):
         # traj_2d = traj_2d[..., [1, 0]]
         # visibility = np.transpose(visibility, (1, 0))
         # visibility = np.transpose(np.logical_not(visibility), (1, 0))
-        print(traj_2d.shape, visibility.shape)
+        # print(traj_2d.shape, visibility.shape)
         if self.use_augs:
             rgbs, traj_2d, visibility = self.add_photometric_augs(
                 rgbs, traj_2d, visibility
