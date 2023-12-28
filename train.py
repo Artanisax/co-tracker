@@ -7,6 +7,9 @@
 import os
 import random
 import torch
+import signal
+import socket
+import sys
 import json
 
 import numpy as np
@@ -262,19 +265,19 @@ class Lite(LightningLite):
                 )
                 eval_dataloaders.append(("dynamic_replica", eval_dataloader_dr))
 
-        if "tapvid_davis_first" in args.eval_datasets:
-            data_root = os.path.join(args.dataset_root, "tapvid_davis/tapvid_davis.pkl")
-            eval_dataset = TapVidDataset(dataset_type="davis", data_root=data_root)
-            eval_dataloader_tapvid_davis = torch.utils.data.DataLoader(
-                eval_dataset,
-                batch_size=1,
-                shuffle=False,
-                num_workers=1,
-                collate_fn=collate_fn,
-            )
-            eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
+            if "tapvid_davis_first" in args.eval_datasets:
+                data_root = os.path.join(args.dataset_root, "tapvid_davis/tapvid_davis.pkl")
+                eval_dataset = TapVidDataset(dataset_type="davis", data_root=data_root)
+                eval_dataloader_tapvid_davis = torch.utils.data.DataLoader(
+                    eval_dataset,
+                    batch_size=1,
+                    shuffle=False,
+                    num_workers=1,
+                    collate_fn=collate_fn,
+                )
+                eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
 
-        evaluator = Evaluator(args.ckpt_path)
+            evaluator = Evaluator(args.ckpt_path)
 
             visualizer = Visualizer(
                 save_dir=args.ckpt_path,
@@ -300,7 +303,7 @@ class Lite(LightningLite):
 
         model.cuda()
 
-        train_dataset = kubric_movif_dataset.KubricMovifDataset(
+        train_dataset = KubricMovifDataset(
             data_root=os.path.join(args.dataset_root, "kubric_movi_f"),
             crop_size=args.crop_size,
             seq_len=args.sequence_len,
@@ -469,19 +472,19 @@ class Lite(LightningLite):
                             logging.info(f"Saving file {save_path}")
                             self.save(save_dict, save_path)
 
-                        # if (epoch + 1) % args.evaluate_every_n_epoch == 0 or (
-                        #     args.validate_at_start and epoch == 0
-                        # ):
-                        #     run_test_eval(
-                        #         evaluator,
-                        #         model,
-                        #         eval_dataloaders,
-                        #         logger.writer,
-                        #         total_steps,
-                        #     )
-                        #     model.train()
-                        #     torch.cuda.empty_cache()
-                print(f'step {total_steps} complete!\n')
+                        if (epoch + 1) % args.evaluate_every_n_epoch == 0 or (
+                            args.validate_at_start and epoch == 0
+                        ):
+                            run_test_eval(
+                                evaluator,
+                                model,
+                                eval_dataloaders,
+                                logger.writer,
+                                total_steps,
+                            )
+                            model.train()
+                            torch.cuda.empty_cache()
+
                 self.barrier()
                 if total_steps > args.num_steps:
                     should_keep_training = False
@@ -489,10 +492,10 @@ class Lite(LightningLite):
         if self.global_rank == 0:
             print("FINISHED TRAINING")
 
-        PATH = f"{args.ckpt_path}/{args.model_name}_final.pth"
-        torch.save(model.module.module.state_dict(), PATH)
-        run_test_eval(evaluator, model, eval_dataloaders, logger.writer, total_steps)
-        logger.close()
+            PATH = f"{args.ckpt_path}/{args.model_name}_final.pth"
+            torch.save(model.module.module.state_dict(), PATH)
+            run_test_eval(evaluator, model, eval_dataloaders, logger.writer, total_steps)
+            logger.close()
 
 
 if __name__ == "__main__":
@@ -503,14 +506,10 @@ if __name__ == "__main__":
     parser.add_argument("--restore_ckpt", help="path to restore a checkpoint")
     parser.add_argument("--ckpt_path", help="path to save checkpoints")
     parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=4,
-        help="batch size used during training."
+        "--batch_size", type=int, default=4, help="batch size used during training."
     )
-    parser.add_argument(
-        "--num_workers", type=int, default=6, help="number of dataloader workers"
-    )
+    parser.add_argument("--num_nodes", type=int, default=1)
+    parser.add_argument("--num_workers", type=int, default=10, help="number of dataloader workers")
 
     parser.add_argument("--mixed_precision", action="store_true", help="use mixed precision")
     parser.add_argument("--lr", type=float, default=0.0005, help="max learning rate.")
@@ -548,9 +547,7 @@ if __name__ == "__main__":
         help="the number of trajectories to sample for training",
     )
     parser.add_argument(
-        "--dataset_root",
-        type=str,
-        help="path lo all the datasets (train and eval)"
+        "--dataset_root", type=str, help="path lo all the datasets (train and eval)"
     )
 
     parser.add_argument(
@@ -630,8 +627,8 @@ if __name__ == "__main__":
     from pytorch_lightning.strategies import DDPStrategy
     
     Lite(
-        strategy=DDPStrategy(find_unused_parameters=True),
-        devices="auto",
+        strategy=DDPStrategy(find_unused_parameters=False),
+        devices=args.gpus,
         accelerator="gpu",
         precision=32,
         num_nodes=args.num_nodes,
