@@ -253,51 +253,51 @@ class Lite(LightningLite):
         g = torch.Generator()
         g.manual_seed(0)
 
-        # eval_dataloaders = []
-        # if "badja" in args.eval_datasets:
-        #     eval_dataset = BadjaDataset(
-        #         data_root=os.path.join(args.dataset_root, "BADJA"),
-        #         max_seq_len=args.eval_max_seq_len,
-        #         dataset_resolution=args.crop_size,
-        #     )
-        #     eval_dataloader_badja = torch.utils.data.DataLoader(
-        #         eval_dataset,
-        #         batch_size=1,
-        #         shuffle=False,
-        #         num_workers=8,
-        #         collate_fn=collate_fn,
-        #     )
-        #     eval_dataloaders.append(("badja", eval_dataloader_badja))
+        eval_dataloaders = []
+        if "badja" in args.eval_datasets:
+            eval_dataset = BadjaDataset(
+                data_root=os.path.join(args.dataset_root, "BADJA"),
+                max_seq_len=args.eval_max_seq_len,
+                dataset_resolution=args.crop_size,
+            )
+            eval_dataloader_badja = torch.utils.data.DataLoader(
+                eval_dataset,
+                batch_size=1,
+                shuffle=False,
+                num_workers=8,
+                collate_fn=collate_fn,
+            )
+            eval_dataloaders.append(("badja", eval_dataloader_badja))
 
-        # if "fastcapture" in args.eval_datasets:
-        #     eval_dataset = FastCaptureDataset(
-        #         data_root=os.path.join(args.dataset_root, "fastcapture"),
-        #         max_seq_len=min(100, args.eval_max_seq_len),
-        #         max_num_points=40,
-        #         dataset_resolution=args.crop_size,
-        #     )
-        #     eval_dataloader_fastcapture = torch.utils.data.DataLoader(
-        #         eval_dataset,
-        #         batch_size=1,
-        #         shuffle=False,
-        #         num_workers=1,
-        #         collate_fn=collate_fn,
-        #     )
-        #     eval_dataloaders.append(("fastcapture", eval_dataloader_fastcapture))
+        if "fastcapture" in args.eval_datasets:
+            eval_dataset = FastCaptureDataset(
+                data_root=os.path.join(args.dataset_root, "fastcapture"),
+                max_seq_len=min(100, args.eval_max_seq_len),
+                max_num_points=40,
+                dataset_resolution=args.crop_size,
+            )
+            eval_dataloader_fastcapture = torch.utils.data.DataLoader(
+                eval_dataset,
+                batch_size=1,
+                shuffle=False,
+                num_workers=1,
+                collate_fn=collate_fn,
+            )
+            eval_dataloaders.append(("fastcapture", eval_dataloader_fastcapture))
 
-        # if "tapvid_davis_first" in args.eval_datasets:
-        #     data_root = os.path.join(args.dataset_root, "tapvid_davis/tapvid_davis.pkl")
-        #     eval_dataset = TapVidDataset(dataset_type="davis", data_root=data_root)
-        #     eval_dataloader_tapvid_davis = torch.utils.data.DataLoader(
-        #         eval_dataset,
-        #         batch_size=1,
-        #         shuffle=False,
-        #         num_workers=1,
-        #         collate_fn=collate_fn,
-        #     )
-        #     eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
+        if "tapvid_davis_first" in args.eval_datasets:
+            data_root = os.path.join(args.dataset_root, "tapvid_davis/tapvid_davis.pkl")
+            eval_dataset = TapVidDataset(dataset_type="davis", data_root=data_root)
+            eval_dataloader_tapvid_davis = torch.utils.data.DataLoader(
+                eval_dataset,
+                batch_size=1,
+                shuffle=False,
+                num_workers=1,
+                collate_fn=collate_fn,
+            )
+            eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
 
-        # evaluator = Evaluator(args.ckpt_path)
+        evaluator = Evaluator(args.ckpt_path)
 
         visualizer = Visualizer(
             save_dir=args.ckpt_path,
@@ -338,8 +338,7 @@ class Lite(LightningLite):
         # )
         
         train_dataset = PointOdysseyDataset(
-            # data_root=os.path.join(args.dataset_root, "point_odyssey"),
-            data_root=args.dataset_root,
+            data_root=os.path.join(args.dataset_root, "point_odyssey", "train"),
             crop_size=args.crop_size,
             seq_len=args.sequence_len,
             traj_per_sample=args.traj_per_sample,
@@ -516,18 +515,18 @@ class Lite(LightningLite):
                             logging.info(f"Saving file {save_path}")
                             self.save(save_dict, save_path)
 
-                        # if (epoch + 1) % args.evaluate_every_n_epoch == 0 or (
-                        #     args.validate_at_start and epoch == 0
-                        # ):
-                        #     run_test_eval(
-                        #         evaluator,
-                        #         model,
-                        #         eval_dataloaders,
-                        #         logger.writer,
-                        #         total_steps,
-                        #     )
-                        #     model.train()
-                        #     torch.cuda.empty_cache()
+                        if (epoch + 1) % args.evaluate_every_n_epoch == 0 or (
+                            args.validate_at_start and epoch == 0
+                        ):
+                            run_test_eval(
+                                evaluator,
+                                model,
+                                eval_dataloaders,
+                                logger.writer,
+                                total_steps,
+                            )
+                            model.train()
+                            torch.cuda.empty_cache()
                 print(f'step {total_steps} complete!\n')
                 self.barrier()
                 if total_steps > args.num_steps:
@@ -538,7 +537,7 @@ class Lite(LightningLite):
 
         PATH = f"{args.ckpt_path}/{args.model_name}_final.pth"
         torch.save(model.module.module.state_dict(), PATH)
-        # run_test_eval(evaluator, model, eval_dataloaders, logger.writer, total_steps)
+        run_test_eval(evaluator, model, eval_dataloaders, logger.writer, total_steps)
         logger.close()
 
 
