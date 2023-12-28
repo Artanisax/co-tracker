@@ -11,7 +11,7 @@ class PointOdysseyDataset(CoTrackerDataset):
     def __init__(
         self,
         data_root,
-        crop_size=(540, 960),
+        crop_size=(512, 640),
         seq_len=24,
         traj_per_sample=768,
         sample_vis_1st_frame=False,
