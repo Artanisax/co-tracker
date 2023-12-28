@@ -18,7 +18,8 @@ def build_cotracker(
     if model_name == "cotracker":
         return build_cotracker(checkpoint=checkpoint)
     else:
-        raise ValueError(f"Unknown model name {model_name}")
+        return build_cotracker_stride_4_wind_8(checkpoint=checkpoint)
+        # raise ValueError(f"Unknown model name {model_name}")
 
 
 def build_cotracker(checkpoint=None):
