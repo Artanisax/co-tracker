@@ -4,6 +4,8 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+hhd3_root = "/hhd3/GroupProject2023Fall/datasets"
+
 import os
 import random
 import torch
@@ -251,33 +253,33 @@ class Lite(LightningLite):
         g = torch.Generator()
         g.manual_seed(0)
         if self.global_rank == 0:
-        #     eval_dataloaders = []
-        #     if "dynamic_replica" in args.eval_datasets:
-        #         eval_dataset = DynamicReplicaDataset(
-        #             sample_len=60, only_first_n_samples=1, rgbd_input=False
-        #         )
-        #         eval_dataloader_dr = torch.utils.data.DataLoader(
-        #             eval_dataset,
-        #             batch_size=1,
-        #             shuffle=False,
-        #             num_workers=1,
-        #             collate_fn=collate_fn,
-        #         )
-        #         eval_dataloaders.append(("dynamic_replica", eval_dataloader_dr))
+            eval_dataloaders = []
+            if "dynamic_replica" in args.eval_datasets:
+                eval_dataset = DynamicReplicaDataset(
+                    sample_len=60, only_first_n_samples=1, rgbd_input=False
+                )
+                eval_dataloader_dr = torch.utils.data.DataLoader(
+                    eval_dataset,
+                    batch_size=1,
+                    shuffle=False,
+                    num_workers=1,
+                    collate_fn=collate_fn,
+                )
+                eval_dataloaders.append(("dynamic_replica", eval_dataloader_dr))
 
-        #     if "tapvid_davis_first" in args.eval_datasets:
-        #         data_root = os.path.join(args.dataset_root, "tapvid_davis/tapvid_davis.pkl")
-        #         eval_dataset = TapVidDataset(dataset_type="davis", data_root=data_root)
-        #         eval_dataloader_tapvid_davis = torch.utils.data.DataLoader(
-        #             eval_dataset,
-        #             batch_size=1,
-        #             shuffle=False,
-        #             num_workers=1,
-        #             collate_fn=collate_fn,
-        #         )
-        #         eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
+            if "tapvid_davis_first" in args.eval_datasets:
+                data_root = os.path.join(hhd3_root, "tapvid_davis/tapvid_davis.pkl")
+                eval_dataset = TapVidDataset(dataset_type="davis", data_root=data_root)
+                eval_dataloader_tapvid_davis = torch.utils.data.DataLoader(
+                    eval_dataset,
+                    batch_size=1,
+                    shuffle=False,
+                    num_workers=1,
+                    collate_fn=collate_fn,
+                )
+                eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
 
-        #     evaluator = Evaluator(args.ckpt_path)
+            evaluator = Evaluator(args.ckpt_path)
 
             visualizer = Visualizer(
                 save_dir=args.ckpt_path,
@@ -304,7 +306,7 @@ class Lite(LightningLite):
         model.cuda()
 
         train_dataset = KubricMovifDataset(
-            data_root=os.path.join(args.dataset_root, "kubric_movi_f_demo"),
+            data_root=os.path.join(args.dataset_root, "kubric_movi_f"),
             crop_size=args.crop_size,
             seq_len=args.sequence_len,
             traj_per_sample=args.traj_per_sample,
@@ -313,7 +315,7 @@ class Lite(LightningLite):
         )
         
         # train_dataset = PointOdysseyDataset(
-        #     data_root=os.path.join(args.dataset_root, "point_odyssey", "train"),
+        #     data_root=os.path.join(hhd3_root, "point_odyssey", "train"),
         #     crop_size=args.crop_size,
         #     seq_len=args.sequence_len,
         #     traj_per_sample=args.traj_per_sample,
@@ -472,18 +474,18 @@ class Lite(LightningLite):
                             logging.info(f"Saving file {save_path}")
                             self.save(save_dict, save_path)
 
-                        # if (epoch + 1) % args.evaluate_every_n_epoch == 0 or (
-                        #     args.validate_at_start and epoch == 0
-                        # ):
-                        #     run_test_eval(
-                        #         evaluator,
-                        #         model,
-                        #         eval_dataloaders,
-                        #         logger.writer,
-                        #         total_steps,
-                        #     )
-                        #     model.train()
-                        #     torch.cuda.empty_cache()
+                        if (epoch + 1) % args.evaluate_every_n_epoch == 0 or (
+                            args.validate_at_start and epoch == 0
+                        ):
+                            run_test_eval(
+                                evaluator,
+                                model,
+                                eval_dataloaders,
+                                logger.writer,
+                                total_steps,
+                            )
+                            model.train()
+                            torch.cuda.empty_cache()
 
                 self.barrier()
                 if total_steps > args.num_steps:
@@ -494,7 +496,7 @@ class Lite(LightningLite):
 
             PATH = f"{args.ckpt_path}/{args.model_name}_final.pth"
             torch.save(model.module.module.state_dict(), PATH)
-            # run_test_eval(evaluator, model, eval_dataloaders, logger.writer, total_steps)
+            run_test_eval(evaluator, model, eval_dataloaders, logger.writer, total_steps)
             logger.close()
 
 
