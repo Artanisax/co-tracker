@@ -104,3 +104,17 @@ def dataclass_to_cuda_(obj):
     for f in dataclasses.fields(obj):
         setattr(obj, f.name, try_to_cuda(getattr(obj, f.name)))
     return obj
+
+
+def resize_sample(rgbs, trajs_g, segs, interp_shape):
+    S, C, H, W = rgbs.shape
+    S, N, D = trajs_g.shape
+
+    assert D == 2
+
+    rgbs = F.interpolate(rgbs, interp_shape, mode="bilinear")
+    segs = F.interpolate(segs, interp_shape, mode="nearest")
+
+    trajs_g[:, :, 0] *= interp_shape[1] / W
+    trajs_g[:, :, 1] *= interp_shape[0] / H
+    return rgbs, trajs_g, segs
