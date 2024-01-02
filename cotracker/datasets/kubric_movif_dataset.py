@@ -58,7 +58,7 @@ class KubricMovifDataset(CoTrackerDataset):
 
         rgbs = np.stack(rgbs)
         annot_dict = np.load(npy_path, allow_pickle=True).item()
-        traj_2d = annot_dict["coords"]
+        traj_2d = annot_dict["coords"] * 2  # due to error annot scale
         visibility = annot_dict["visibility"]
 
         # random crop

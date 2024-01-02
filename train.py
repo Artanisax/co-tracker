@@ -30,6 +30,7 @@ from cotracker.models.evaluation_predictor import EvaluationPredictor
 from cotracker.models.core.cotracker.cotracker import CoTracker2
 from cotracker.utils.visualizer import Visualizer
 from cotracker.datasets.tap_vid_datasets import TapVidDataset
+from cotracker.datasets.badja_dataset import BadjaDataset
 
 from cotracker.datasets.dr_dataset import DynamicReplicaDataset
 from cotracker.evaluation.core.evaluator import Evaluator
@@ -254,31 +255,45 @@ class Lite(LightningLite):
         g.manual_seed(0)
         if self.global_rank == 0:
             eval_dataloaders = []
-            if "dynamic_replica" in args.eval_datasets:
-                eval_dataset = DynamicReplicaDataset(
-                    sample_len=60, only_first_n_samples=1, rgbd_input=False
-                )
-                eval_dataloader_dr = torch.utils.data.DataLoader(
-                    eval_dataset,
-                    batch_size=1,
-                    shuffle=False,
-                    num_workers=1,
-                    collate_fn=collate_fn,
-                )
-                eval_dataloaders.append(("dynamic_replica", eval_dataloader_dr))
+            # if "dynamic_replica" in args.eval_datasets:
+            #     eval_dataset = DynamicReplicaDataset(
+            #         sample_len=60, only_first_n_samples=1, rgbd_input=False
+            #     )
+            #     eval_dataloader_dr = torch.utils.data.DataLoader(
+            #         eval_dataset,
+            #         batch_size=1,
+            #         shuffle=False,
+            #         num_workers=8,
+            #         collate_fn=collate_fn,
+            #     )
+            #     eval_dataloaders.append(("dynamic_replica", eval_dataloader_dr))
 
             if "tapvid_davis_first" in args.eval_datasets:
-                data_root = os.path.join(hhd3_root, "tapvid_davis/tapvid_davis.pkl")
-                eval_dataset = TapVidDataset(dataset_type="davis", data_root=data_root)
+                eval_dataset = TapVidDataset(
+                    dataset_type="davis", data_root=os.path.join(hhd3_root, "tapvid_davis/tapvid_davis.pkl")
+                )
                 eval_dataloader_tapvid_davis = torch.utils.data.DataLoader(
                     eval_dataset,
                     batch_size=1,
                     shuffle=False,
-                    num_workers=1,
+                    num_workers=8,
                     collate_fn=collate_fn,
                 )
                 eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
-
+            
+            if "badja" in args.eval_datasets:
+                eval_dataset = BadjaDataset(
+                    data_root=os.path.join(hhd3_root, "BADJA")
+                )
+                eval_dataloader_badja = torch.utils.data.DataLoader(
+                    eval_dataset,
+                    batch_size=1,
+                    shuffle=False,
+                    num_workers=8,
+                    collate_fn=collate_fn,
+                )
+                eval_dataloaders.append(("badja", eval_dataloader_badja))
+            
             evaluator = Evaluator(args.ckpt_path)
 
             visualizer = Visualizer(
@@ -305,23 +320,23 @@ class Lite(LightningLite):
 
         model.cuda()
 
-        train_dataset = KubricMovifDataset(
-            data_root=os.path.join(args.dataset_root, "kubric_movi_f"),
-            crop_size=args.crop_size,
-            seq_len=args.sequence_len,
-            traj_per_sample=args.traj_per_sample,
-            sample_vis_1st_frame=args.sample_vis_1st_frame,
-            use_augs=not args.dont_use_augs,
-        )
-        
-        # train_dataset = PointOdysseyDataset(
-        #     data_root=os.path.join(hhd3_root, "point_odyssey", "train"),
+        # train_dataset = KubricMovifDataset(
+        #     data_root=os.path.join(args.dataset_root, "kubric_movi_f"),
         #     crop_size=args.crop_size,
         #     seq_len=args.sequence_len,
         #     traj_per_sample=args.traj_per_sample,
         #     sample_vis_1st_frame=args.sample_vis_1st_frame,
         #     use_augs=not args.dont_use_augs,
         # )
+        
+        train_dataset = PointOdysseyDataset(
+            data_root=os.path.join(hhd3_root, "point_odyssey", "train"),
+            crop_size=args.crop_size,
+            seq_len=args.sequence_len,
+            traj_per_sample=args.traj_per_sample,
+            sample_vis_1st_frame=args.sample_vis_1st_frame,
+            use_augs=not args.dont_use_augs,
+        )
 
         train_loader = DataLoader(
             train_dataset,

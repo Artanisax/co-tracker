@@ -25,9 +25,7 @@ class PointOdysseyDataset(CoTrackerDataset):
             sample_vis_1st_frame=sample_vis_1st_frame,
             use_augs=use_augs,
         )
-        
-        print('crop_size:', self.crop_size)
-        
+
         self.pad_bounds = [0, 25]
         self.resize_lim = [0.75, 1.25]  # sample resizes from here
         self.resize_delta = 0.05
