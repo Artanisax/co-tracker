@@ -181,6 +181,55 @@ def run_test_eval(evaluator, model, dataloaders, writer, step):
         writer.add_scalars(f"Eval_{ds_name}", metrics, step)
 
 
+# def run_test_eval(evaluator, model, dataloaders, writer, step):
+#     model.eval()
+#     for ds_name, dataloader in dataloaders:
+#         predictor = EvaluationPredictor(
+#             model.module.module,
+#             grid_size=6,
+#             local_grid_size=0,
+#             single_point=False,
+#             n_iters=6,
+#         )
+#         if torch.cuda.is_available():
+#             predictor.model = predictor.model.cuda()
+
+#         metrics = evaluator.evaluate_sequence(
+#             model=predictor,
+#             test_dataloader=dataloader,
+#             dataset_name=ds_name,
+#             train_mode=True,
+#             writer=writer,
+#             step=step,
+#         )
+
+#         if ds_name == "badja" or ds_name == "fastcapture" or ("kubric" in ds_name):
+
+#             metrics = {
+#                 **{
+#                     f"{ds_name}_avg": np.mean(
+#                         [v for k, v in metrics.items() if "accuracy" not in k]
+#                     )
+#                 },
+#                 **{
+#                     f"{ds_name}_avg_accuracy": np.mean(
+#                         [v for k, v in metrics.items() if "accuracy" in k]
+#                     )
+#                 },
+#             }
+#             print("avg", np.mean([v for v in metrics.values()]))
+
+#         if "tapvid" in ds_name:
+#             metrics = {
+#                 f"{ds_name}_avg_OA": metrics["avg"]["occlusion_accuracy"] * 100,
+#                 f"{ds_name}_avg_delta": metrics["avg"]["average_pts_within_thresh"]
+#                 * 100,
+#                 f"{ds_name}_avg_Jaccard": metrics["avg"]["average_jaccard"] * 100,
+#             }
+
+#         writer.add_scalars(f"Eval", metrics, step)
+
+
 class Logger:
     SUM_FREQ = 100
 
@@ -281,18 +330,18 @@ class Lite(LightningLite):
                 )
                 eval_dataloaders.append(("tapvid_davis", eval_dataloader_tapvid_davis))
             
-            if "badja" in args.eval_datasets:
-                eval_dataset = BadjaDataset(
-                    data_root=os.path.join(hhd3_root, "BADJA")
-                )
-                eval_dataloader_badja = torch.utils.data.DataLoader(
-                    eval_dataset,
-                    batch_size=1,
-                    shuffle=False,
-                    num_workers=8,
-                    collate_fn=collate_fn,
-                )
-                eval_dataloaders.append(("badja", eval_dataloader_badja))
+            # if "badja" in args.eval_datasets:
+            #     eval_dataset = BadjaDataset(
+            #         data_root=os.path.join(hhd3_root, "BADJA")
+            #     )
+            #     eval_dataloader_badja = torch.utils.data.DataLoader(
+            #         eval_dataset,
+            #         batch_size=1,
+            #         shuffle=False,
+            #         num_workers=8,
+            #         collate_fn=collate_fn,
+            #     )
+            #     eval_dataloaders.append(("badja", eval_dataloader_badja))
             
             evaluator = Evaluator(args.ckpt_path)
 
