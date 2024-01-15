@@ -160,7 +160,7 @@ class CoTracker2(nn.Module):
             )  # (B N S) C -> B S N C
 
         vis_pred = self.vis_predictor(track_feat).reshape(B, S, N)
-        return coord_preds, vis_pred
+        return coord_preds, vis_pred, track_feat
 
     def get_track_feat(self, fmaps, queried_frames, queried_coords):
         sample_frames = queried_frames[:, None, :, None]
@@ -278,6 +278,7 @@ class CoTracker2(nn.Module):
                 self.online_track_feat = torch.zeros_like(track_feat, device=device)
             self.online_track_feat += track_feat * sample_mask
             track_feat = self.online_track_feat.clone()
+        recent_feat = track_feat[:, 0, ...].clone().detach().squeeze(1)
         # We process ((num_windows - 1) * step + S) frames in total, so there are
         # (ceil((T - S) / step) + 1) windows
         num_windows = (T - S + step - 1) // step + 1
@@ -323,15 +324,21 @@ class CoTracker2(nn.Module):
                 track_mask[:, :overlap, :, :] = False
 
             # Predict the coordinates and visibility for the current window
-            coords, vis = self.forward_window(
+            coords, vis, feat = self.forward_window(
                 fmaps=fmaps if is_online else fmaps[:, ind : ind + S],
                 coords=coords_init,
-                track_feat=attention_mask.unsqueeze(-1) * track_feat,
+                # track_feat=attention_mask.unsqueeze(-1) * track_feat,
+                track_feat=attention_mask.unsqueeze(-1) * recent_feat.repeat(1, S, 1, 1),
                 vis=vis_init,
                 track_mask=track_mask,
                 attention_mask=attention_mask,
                 iters=iters,
             )
+            """Select the most convincing visible track to update recent feature"""
+            indices = torch.argmax(attention_mask.unsqueeze(-1) * vis.unsqueeze(-1).repeat(1, 1, 1, feat.shape[-1]), dim=1, keepdim=True)
+            recent_feat = torch.where(torch.take_along_dim(vis.unsqueeze(-1), indices=indices, dim=1) > 0,
+                                      torch.take_along_dim(feat, indices=indices, dim=1),
+                                      recent_feat)
 
             S_trimmed = T if is_online else min(T - ind, S)  # accounts for last window duration
             coords_predicted[:, ind : ind + S] = coords[-1][:, :S_trimmed]

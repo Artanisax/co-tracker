@@ -369,23 +369,23 @@ class Lite(LightningLite):
 
         model.cuda()
 
-        # train_dataset = KubricMovifDataset(
-        #     data_root=os.path.join(args.dataset_root, "kubric_movi_f"),
-        #     crop_size=args.crop_size,
-        #     seq_len=args.sequence_len,
-        #     traj_per_sample=args.traj_per_sample,
-        #     sample_vis_1st_frame=args.sample_vis_1st_frame,
-        #     use_augs=not args.dont_use_augs,
-        # )
-        
-        train_dataset = PointOdysseyDataset(
-            data_root=os.path.join(hhd3_root, "point_odyssey", "train"),
+        train_dataset = KubricMovifDataset(
+            data_root=os.path.join(args.dataset_root, "kubric_movi_f"),
             crop_size=args.crop_size,
             seq_len=args.sequence_len,
             traj_per_sample=args.traj_per_sample,
             sample_vis_1st_frame=args.sample_vis_1st_frame,
             use_augs=not args.dont_use_augs,
         )
+        
+        # train_dataset = PointOdysseyDataset(
+        #     data_root=os.path.join(hhd3_root, "point_odyssey", "train"),
+        #     crop_size=args.crop_size,
+        #     seq_len=args.sequence_len,
+        #     traj_per_sample=args.traj_per_sample,
+        #     sample_vis_1st_frame=args.sample_vis_1st_frame,
+        #     use_augs=not args.dont_use_augs,
+        # )
 
         train_loader = DataLoader(
             train_dataset,
